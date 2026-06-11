@@ -10,6 +10,124 @@ let canvas = null;
 let cssW = 0;
 let cssH = 0;
 
+// ---- Background map: server-computed topocentric ground grid ----
+// The server precomputes (az, alt) for every coastline vertex relative to the
+// observer.  The frontend just projects those through the active projection
+// plugin and draws -- identical coordinate space to the satellites.
+
+let groundGrid = null; // { rings: [...] } from /api/groundgrid
+let bgCache = null; // { key, paths } -- projected screen paths, rebuilt on view change
+let gridObserverKey = ""; // observer lat/lon at time of last fetch
+
+function fetchGroundGrid() {
+  fetch("/api/groundgrid")
+    .then((r) => r.json())
+    .then((data) => {
+      groundGrid = data;
+      const obs = state.observer;
+      gridObserverKey = `${obs.latitude},${obs.longitude}`;
+      bgCache = null; // force reproject
+    })
+    .catch((e) => console.warn("groundgrid fetch failed:", e));
+}
+
+function bgCacheKey(g, mode) {
+  const obs = state.observer;
+  return `${g.cx},${g.cy},${g.R},${g.flipX},${mode},${obs.latitude},${obs.longitude}`;
+}
+
+function projectGroundRing(ring, proj, g) {
+  const out = [];
+  for (let i = 0; i < ring.length; i += 2) {
+    if (ring[i] === null || ring[i + 1] === null) {
+      out.push(NaN, NaN);
+      continue;
+    }
+    const p = proj.project(ring[i], ring[i + 1], g);
+    out.push(p.x, p.y);
+  }
+  return out;
+}
+
+function buildBgPaths(proj, g) {
+  if (!groundGrid || !groundGrid.rings) return [];
+  const paths = [];
+  for (const ring of groundGrid.rings) {
+    paths.push(projectGroundRing(ring, proj, g));
+  }
+  return paths;
+}
+
+function drawBgMap(proj, g, palette) {
+  if (!groundGrid) return;
+
+  // If observer changed, re-fetch the grid from the server.
+  const obs = state.observer;
+  const obsKey = `${obs.latitude},${obs.longitude}`;
+  if (obsKey !== gridObserverKey) {
+    fetchGroundGrid();
+    return; // draw next frame after grid arrives
+  }
+
+  // Rebuild projected paths when geometry or observer changes.
+  const key = bgCacheKey(g, state.mode);
+  if (!bgCache || bgCache.key !== key) {
+    bgCache = { key, paths: buildBgPaths(proj, g) };
+  }
+
+  // Clip to the horizon ring so continents don't bleed past it.
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(g.cx, g.cy, g.R, 0, Math.PI * 2);
+  ctx.clip();
+
+  // Draw continents faintly, breaking paths at NaN gap sentinels.
+  ctx.globalAlpha = 0.15;
+  ctx.fillStyle = palette.mint;
+  for (const flat of bgCache.paths) {
+    let drawing = false;
+    ctx.beginPath();
+    for (let i = 0; i < flat.length; i += 2) {
+      if (Number.isNaN(flat[i]) || Number.isNaN(flat[i + 1])) {
+        if (drawing) {
+          ctx.closePath();
+          ctx.fill();
+          ctx.beginPath();
+          drawing = false;
+        }
+        continue;
+      }
+      if (!drawing) {
+        ctx.moveTo(flat[i], flat[i + 1]);
+        drawing = true;
+      } else {
+        ctx.lineTo(flat[i], flat[i + 1]);
+      }
+    }
+    if (drawing) {
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // Observer crosshair: the point directly overhead (observer's own location).
+  // For an observer on the surface, their own lat/lon is at the zenith.
+  const op = proj.project(0, 90, g);
+  ctx.globalAlpha = 0.6;
+  ctx.strokeStyle = palette.pink;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(op.x - 6, op.y);
+  ctx.lineTo(op.x + 6, op.y);
+  ctx.moveTo(op.x, op.y - 6);
+  ctx.lineTo(op.x, op.y + 6);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+// ---- Canvas infrastructure ----
+
 function resize() {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   cssW = window.innerWidth;
@@ -65,11 +183,16 @@ function render() {
     ctx.fillRect(0, 0, cssW, cssH);
   }
 
+  const proj = activeProjection();
+  const g = getGeometry();
+
+  // Background map layer (behind satellites, after clear).
+  if (state.display.bgMap) {
+    drawBgMap(proj, g, palette);
+  }
+
   const frame = state.frame;
   if (frame && frame.count) {
-    const proj = activeProjection();
-    const g = getGeometry();
-
     const frac = Math.min(
       1,
       (performance.now() - state.frameReceivedAt) / 1000 / (state.interval || 1),
@@ -146,5 +269,7 @@ export function startCanvas() {
   ctx = canvas.getContext("2d");
   resize();
   window.addEventListener("resize", resize);
+  // Pre-fetch the ground grid so it's ready when the user toggles MAP on.
+  fetchGroundGrid();
   requestAnimationFrame(render);
 }

@@ -28,7 +28,7 @@ export const state = {
   effects: { trail: true, orbitTrack: false, shadowFade: true },
 
   // display toggles
-  display: { guides: true, ceilingFlip: false, belowHorizon: true },
+  display: { guides: true, ceilingFlip: false, belowHorizon: true, bgMap: false },
 
   // pan / zoom view transform
   view: { zoom: 1, panX: 0, panY: 0 },

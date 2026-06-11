@@ -15,6 +15,7 @@ const DISPLAY_LABELS = {
   guides: "GUIDES",
   ceilingFlip: "CEILING FLIP",
   belowHorizon: "BELOW HORIZON",
+  bgMap: "MAP",
 };
 
 let map = null;

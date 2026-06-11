@@ -18,6 +18,7 @@ from .projection_modes import list_modes
 from .satellite_classifiers import available_classifications
 from .services.catalog import load_catalog, maybe_refresh_catalog
 from .services.cities import CityIndex
+from .services.groundgrid import compute_ground_grid
 from .services.observer import ObserverStore
 from .services.propagation import PropagationEngine
 from .services.streamer import AppState, start_stream_task, stop_stream_task
@@ -78,6 +79,14 @@ def create_app() -> FastAPI:
     @app.get("/api/settings")
     async def get_settings() -> dict:
         return _observer_payload(app.state.app_state)
+
+    @app.get("/api/groundgrid")
+    async def api_groundgrid() -> dict:
+        state: AppState = app.state.app_state
+        rings = compute_ground_grid(
+            _STATIC_DIR / "assets" / "geo" / "world.json", state.observer.current
+        )
+        return {"rings": rings}
 
     @app.post("/api/settings")
     async def post_settings(body: SettingsBody) -> dict:
