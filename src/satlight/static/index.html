@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>SATLIGHT</title>
+    <link rel="stylesheet" href="/static/css/lcars.css?v=0.1.0" />
+  </head>
+  <body>
+    <canvas id="sky"></canvas>
+    <canvas id="guides"></canvas>
+    <div id="tooltip" class="hidden"></div>
+
+    <aside id="hud">
+      <div class="hud-title">SATLIGHT</div>
+
+      <div class="hud-stats">
+        <div class="stat"><span class="lbl">VISIBLE</span><span id="hud-visible" class="val">--</span></div>
+        <div class="stat"><span class="lbl">TRACKED</span><span id="hud-tracked" class="val">--</span></div>
+        <div class="stat clickable"><span class="lbl">MODE</span><span id="hud-mode" class="val">--</span></div>
+        <div class="stat"><span class="lbl">OBSERVER</span><span id="hud-observer" class="val">--</span></div>
+      </div>
+
+      <div class="hud-section">FILTERS</div>
+      <div id="hud-filters" class="hud-filters"></div>
+
+      <button id="hud-settings" class="lcars-btn">SETTINGS</button>
+      <div id="hud-status" class="hud-status">CONNECTING</div>
+    </aside>
+
+    <div id="settings-modal" class="modal hidden">
+      <div class="modal-card">
+        <div class="modal-title">OBSERVER SETTINGS</div>
+        <div class="modal-body">
+          <div class="coord-row">
+            <label>LATITUDE<input id="set-lat" type="number" step="0.0001" /></label>
+            <label>LONGITUDE<input id="set-lon" type="number" step="0.0001" /></label>
+            <label>ELEVATION (M)<input id="set-elev" type="number" step="1" /></label>
+          </div>
+          <canvas id="teleport-map" width="640" height="320"></canvas>
+          <div class="hud-section">DISPLAY</div>
+          <div id="display-row" class="hud-filters"></div>
+          <div class="hud-section">EFFECTS</div>
+          <div id="effects-row" class="hud-filters"></div>
+        </div>
+        <div class="modal-actions">
+          <button id="set-cancel" class="lcars-btn ghost">CANCEL</button>
+          <button id="set-save" class="lcars-btn">SAVE</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/static/js/main.js?v=0.1.0"></script>
+  </body>
+</html>
