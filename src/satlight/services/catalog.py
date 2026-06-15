@@ -68,6 +68,9 @@ def _cache_age_hours(path: Path) -> float | None:
 
 def should_refresh(cfg: Config, *, now: datetime | None = None) -> bool:
     """Decide whether a refresh attempt is permitted right now."""
+    if cfg.disable_catalog_refresh:
+        return False
+
     now = now or _now()
     state = _read_state(cfg.fetch_state_path)
 

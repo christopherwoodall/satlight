@@ -1,3 +1,4 @@
+import dataclasses
 import json
 from datetime import UTC, datetime, timedelta
 
@@ -38,6 +39,11 @@ def test_min_interval_blocks_refresh(cfg):
     assert should_refresh(cfg) is False
 
 
+def test_disabled_refresh_blocks_refresh(cfg):
+    disabled_cfg = dataclasses.replace(cfg, disable_catalog_refresh=True)
+    assert should_refresh(disabled_cfg) is False
+
+
 @respx.mock
 async def test_refresh_downloads_and_clears_cooldown(cfg):
     now = datetime.now(UTC)
@@ -57,6 +63,18 @@ async def test_refresh_downloads_and_clears_cooldown(cfg):
     state = json.loads(cfg.fetch_state_path.read_text())
     assert "last_success" in state
     assert "cooldown_until" not in state
+
+
+@respx.mock
+async def test_disabled_refresh_skips_download(cfg):
+    disabled_cfg = dataclasses.replace(cfg, disable_catalog_refresh=True)
+    route = respx.get(disabled_cfg.csv_url).mock(
+        return_value=httpx.Response(200, text="OBJECT_NAME\n")
+    )
+
+    assert await maybe_refresh_catalog(disabled_cfg) is False
+    assert route.called is False
+    assert disabled_cfg.fetch_state_path.exists() is False
 
 
 @respx.mock

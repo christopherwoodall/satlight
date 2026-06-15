@@ -38,6 +38,13 @@ def _env_int(name: str, default: int) -> int:
     return int(raw)
 
 
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None or raw.strip() == "":
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
 @dataclass(frozen=True, slots=True)
 class Config:
     host: str
@@ -48,6 +55,7 @@ class Config:
 
     csv_url: str
     user_agent: str
+    disable_catalog_refresh: bool
 
     cache_dir: Path
     csv_cache_path: Path
@@ -87,12 +95,15 @@ class Config:
             velocity_sample_seconds=_env_float("SATLIGHT_VELOCITY_SAMPLE_SECONDS", 1.0),
             csv_url=os.getenv("SATLIGHT_CSV_URL", DEFAULT_CSV_URL),
             user_agent=os.getenv("SATLIGHT_USER_AGENT", DEFAULT_USER_AGENT),
+            disable_catalog_refresh=_env_bool(
+                "SATLIGHT_DISABLE_CATALOG_REFRESH", False
+            ),
             cache_dir=cache_dir,
             csv_cache_path=csv_cache_path,
             fetch_state_path=fetch_state_path,
             cache_max_age_hours=_env_float("SATLIGHT_CACHE_MAX_AGE_HOURS", 12.0),
             min_fetch_interval_hours=_env_float(
-                "SATLIGHT_MIN_FETCH_INTERVAL_HOURS", 1.0
+                "SATLIGHT_MIN_FETCH_INTERVAL_HOURS", 2.0
             ),
             failure_cooldown_hours=_env_float("SATLIGHT_FAILURE_COOLDOWN_HOURS", 6.0),
             blocked_cooldown_hours=_env_float("SATLIGHT_BLOCKED_COOLDOWN_HOURS", 24.0),
